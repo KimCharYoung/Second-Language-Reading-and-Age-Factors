@@ -1,0 +1,212 @@
+---
+title: "Psychonomics 2023"
+author: "Kim Louis-Jean"
+date: "2023-10-15"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## read in csv
+```{r}
+#Read in the data
+DataOutput <- read.csv("Data-OutliersRemoved-NaN.csv", header = TRUE)
+```
+
+#load in packages 
+```{r}
+library(ggplot2)
+library(mosaic)
+library(ggformula)
+library(plyr)
+library(lmerTest)
+```
+
+## The original study looked at individual differences in learning two new writing systems as it relates to both statistical learning and paired associate learning. This was originally thought of through the framework of first-language reading acquisition. However, participants were adults, who were already proficient English readers. The data collected then can also be thought of in terms of second language reading acquisition. 
+
+```{r}
+# Descriptives of data
+# What is the average age, the minimum and max age
+mean(DataOutput$Age)
+min(DataOutput$Age)
+max(DataOutput$Age)
+sd(DataOutput$Age)
+```
+
+```{r}
+#How many female and how many male? 
+library(mosaic)
+tally(DataOutput$Sex)
+```
+```{r}
+d <- ggplot(data = DataOutput, aes(Sex))
+d + geom_bar()
+```
+```{r}
+f <- ggplot(DataOutput, aes(Sex, WordLetterAVG))
+f + geom_boxplot()
+```
+
+## So when thinking about second language reading acquisition, what things could affect our ability to learn how to read a second language?
+
+## Gender and second language learning
+Given the data, we can look at whether sex/gender has an influence on learning. Does one sex learn a second writing system better than another?
+
+#first I looked at whether there is a correlation between Sex and explicit and implicit letter learning
+
+```{r}
+library(plyr)
+#create a column recoding sex to numerical values
+DataOutput$RSex <- revalue(DataOutput$Sex, c("Male" = "1", "Female" = "2"))
+num_sex <-as.numeric(DataOutput$RSex)
+num_sex
+```
+
+
+### Histograms of Age, PAL, Implicit learning, Explicit learning
+
+
+```{r}
+pal<- gf_histogram(~PALPercentCorrect, data = DataOutput)
+pal + ggtitle("Paired Associate Learning Distribution") + xlab("Paired Associate Learning") + geom_histogram(color="darkblue", fill="lightblue", binwidth = 0.15) + theme(plot.title = element_text(hjust=0.5))
+pal
+```
+
+```{r}
+explicit <- gf_histogram(~LetterLetterAVG, data = DataOutput)
+explicit + ggtitle("Explicit Learning Distribution") + xlab("Explicit Learning") + theme(plot.title = element_text(hjust=0.5))
+explicit
+
+```
+
+```{r}
+implicit <- gf_histogram(~WordLetterAVG, data = DataOutput)
+implicit + ggtitle("Implicit Learning Distribution") + xlab("Implicit Learning") + theme(plot.title = element_text(hjust=0.5))
+implicit
+```
+
+```{r}
+ageplot <- gf_histogram(~Age, data = DataOutput)
+ageplot + ggtitle("Age Distribution") + xlab("Age") + geom_histogram(color="darkblue", fill="lightblue") + theme(plot.title = element_text(hjust=0.5))
+ageplot
+```
+
+
+# Correlations between sex and second language learning
+
+```{r}
+#correlation between sex and explicit learning
+cor.test(num_sex, DataOutput$LetterLetterAVG, 
+         method=c("pearson"))
+```
+
+The correlation shows that there is no significant relationship between sex and explicit learning. 
+
+```{r}
+#correlation between sex and implicit learning
+cor.test(num_sex, DataOutput$WordLetterAVG, 
+         method=c("pearson"))
+```
+
+The correlation shows that there is no significant relationship between sex and implicit learning. 
+## Correlations between Age and second language learning
+
+Given the data, we can also look at how age may influence learning. Does age effect learning, are younger people better at learning a second writing system than older people? 
+
+```{r}
+#correlation between Age and explicit learning
+cor.test(DataOutput$Age, DataOutput$LetterLetterAVG, 
+         method=c("pearson"))
+```
+The correlation shows that there is no significant relationship between age and explicit learning.
+
+```{r}
+#correlation between Age and implicit learning
+cor.test(DataOutput$Age, DataOutput$WordLetterAVG, 
+         method=c("pearson"))
+```
+
+The correlation shows that there is a significant relationship between age and implicit learning.
+
+```{r}
+# Created a scatterplot of the relationship between Age and Implicit learning
+ageimplicit <- gf_point(Age ~ WordLetterAVG, data = DataOutput)%>%
+  gf_lm()
+ageimplicit
+
+```
+
+```{r}
+# Created a scatterplot of the relationship between PAL and Explicit learning
+gf_point(LetterLetterAVG ~ PALPercentCorrect, data = DataOutput)%>%
+  gf_lm()
+```
+
+```{r}
+# Created a scatterplot of the relationship between PAL and Implicit learning
+gf_point(WordLetterAVG ~ PALPercentCorrect, data = DataOutput)%>%
+  gf_lm()
+```
+
+#Linear Regression accounting for sex and age as factors
+
+```{r Explicit Learning}
+explicit.sex = lm(LetterLetterAVG ~ scale(num_sex) + scale(Age), data=DataOutput)
+summary(explicit.sex)
+
+```
+
+The linear regression model, looking at predictor variables for the explicit learning condition finds that both age and sex are not significant predictors for explicit learning. 
+
+```{r Implicit Learning}
+implicit.sex = lm(WordLetterAVG ~ scale(num_sex) + scale(Age), data=DataOutput)
+summary(implicit.sex)
+```
+
+The linear regression model, looking at predictor variables for the implicit learning condition finds that sex is not a significant predictor for implicit learning but age is.
+
+## Second round of linear regressions accounting for other predictor variables in the model 
+
+```{r}
+# doing another linear regression with the other predictor variables for Explicit learning
+explicit.age = lm(LetterLetterAVG ~ scale(PALPercentCorrect) + scale(VSLPercentCorrect)+ scale(DigitSpanForward) + scale(DigitSpanBackward) + scale(RavensPercentCorrect) + scale(RoarPercentCorrect) + scale(RoaravgRT) + scale(num_sex) + scale(Age), data=DataOutput)
+summary(explicit.age)
+```
+
+```{r}
+# doing another linear regression with the other predictor variables for implicit learning
+
+implicit.age = lm(WordLetterAVG ~ scale(PALPercentCorrect) + scale(VSLPercentCorrect)+ scale(DigitSpanForward) + scale(DigitSpanBackward) + scale(RavensPercentCorrect) + scale(RoarPercentCorrect) + scale(RoaravgRT) + scale(num_sex) + scale(Age), data=DataOutput)
+summary(implicit.age)
+```
+
+The second round of linear regressions shows that age is still a predictor of implicit letter learning even when accounting for other factors. 
+
+
+## Looking at participants who did better at one learning over the other
+
+```{r}
+#Creating a column that gets the difference between explicit and implicit
+#negative numbers in this column indicate that the participant did better in the implicit condition and a positive number means they did better in the explicit condition
+DataOutput$DiffScore <- DataOutput$LetterLetterAVG - DataOutput$WordLetterAVG
+```
+
+
+##Subsetting the data for participants better in one learning over the other
+
+```{r}
+#Participants who did better in Explicit learning than Implicit
+# The extra comma is because I want all of the rowsview
+BetterExplicit <- DataOutput[DataOutput$DiffScore > 0,]
+
+#Participants who did better in Implicit learning than Explicit
+BetterImplicit <- DataOutput[DataOutput$DiffScore < 0,]
+
+```
+
+```{r}
+mean(BetterExplicit , na.rm = TRUE)
+```
+
